@@ -11,14 +11,16 @@
 
 package net.steamingbeans.runrun.ui;
 
-import java.awt.KeyboardFocusManager;
+import java.awt.Color;
 import java.awt.Point;
+import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.io.InputStream;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
-import javax.swing.JMenuItem;
+import javax.swing.AbstractAction;
+import javax.swing.Action;
 import javax.swing.JPopupMenu;
 import javax.swing.SwingUtilities;
 import javax.swing.event.PopupMenuEvent;
@@ -81,18 +83,13 @@ public class RunRunConsole extends javax.swing.JFrame {
         outputArea.setText("___~~~ Welcome to RunRun Cover ~~~___\nType '" + stopCommand + "' to stop RunRun Cover.\n");
         output = new Output(toEcho);
         output.execute();
-        popup = new JPopupMenu();
-        popup.add(new JMenuItem("foo"));
-        popup.add(new JMenuItem("bar"));
-        popup.add(new JMenuItem("baz"));
-        popup.addPopupMenuListener(new PopupMenuListener() {
-            @Override public void popupMenuWillBecomeVisible(PopupMenuEvent e) {}
-            @Override public void popupMenuCanceled(PopupMenuEvent e) {}
-            @Override
-            public void popupMenuWillBecomeInvisible(PopupMenuEvent e) {
-                SwingUtilities.invokeLater(inputFieldFocusRunner);
-            }
-        });
+        //Substance issues handled, only relevant if platform is running Substance 4.2 or later
+        outputArea.putClientProperty("substancelaf.colorizationFactor", new Double(1));
+        inputField.putClientProperty("substancelaf.colorizationFactor", new Double(1));
+        inputPanel.putClientProperty("substancelaf.colorizationFactor", new Double(1));
+        jLabel1.putClientProperty("substancelaf.colorizationFactor", new Double(1));
+
+        createPopup();
     }
 
     @Override
@@ -120,7 +117,7 @@ public class RunRunConsole extends javax.swing.JFrame {
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE);
         setBackground(new java.awt.Color(0, 0, 0));
-        setFont(new java.awt.Font("Lucida Console", 0, 13)); // NOI18N
+        setFont(new java.awt.Font("Lucida Console", 0, 13));
 
         mainPanel.setBackground(new java.awt.Color(0, 0, 0));
         mainPanel.setLayout(new java.awt.BorderLayout());
@@ -167,7 +164,7 @@ public class RunRunConsole extends javax.swing.JFrame {
         inputField.setBackground(new java.awt.Color(0, 0, 0));
         inputField.setFont(new java.awt.Font("Lucida Console", 0, 13)); // NOI18N
         inputField.setForeground(new java.awt.Color(215, 215, 215));
-        inputField.setBorder(null);
+        inputField.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
         inputField.setCaretColor(new java.awt.Color(255, 255, 255));
         inputField.setCursor(new java.awt.Cursor(java.awt.Cursor.TEXT_CURSOR));
         inputField.setSelectionColor(new java.awt.Color(204, 204, 204));
@@ -178,7 +175,7 @@ public class RunRunConsole extends javax.swing.JFrame {
         });
 
         jLabel1.setBackground(new java.awt.Color(0, 0, 0));
-        jLabel1.setFont(new java.awt.Font("Lucida Console", 0, 13)); // NOI18N
+        jLabel1.setFont(new java.awt.Font("Lucida Console", 0, 13));
         jLabel1.setForeground(new java.awt.Color(215, 215, 215));
         jLabel1.setText("r!");
 
@@ -251,6 +248,67 @@ public class RunRunConsole extends javax.swing.JFrame {
         popup.show(outputArea, p.x, p.y);
     }
 
+    private void createPopup() {
+        popup = new JPopupMenu();
+        AbstractAction colorSchemeA = new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                Color bg = Color.BLUE;
+                Color fg = Color.WHITE;
+                outputArea.setBackground(bg);
+                outputArea.setForeground(fg);
+                inputField.setBackground(bg);
+                inputField.setForeground(fg);
+                inputPanel.setBackground(bg);
+                jLabel1.setBackground(bg);
+                jLabel1.setForeground(fg);
+            }
+        };
+        colorSchemeA.putValue(Action.NAME, "Blue-White");
+        AbstractAction colorSchemeB = new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                Color bg = Color.BLACK;
+                Color fg = Color.GREEN;
+                outputArea.setBackground(bg);
+                outputArea.setForeground(fg);
+                inputField.setBackground(bg);
+                inputField.setForeground(fg);
+                inputPanel.setBackground(bg);
+                jLabel1.setBackground(bg);
+                jLabel1.setForeground(fg);
+            }
+        };
+        colorSchemeB.putValue(Action.NAME, "Black-Green");
+        AbstractAction colorSchemeC = new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                Color bg = Color.BLACK;
+                Color fg = new Color(215, 215, 215);
+                outputArea.setBackground(bg);
+                outputArea.setForeground(fg);
+                inputField.setBackground(bg);
+                inputField.setForeground(fg);
+                inputPanel.setBackground(bg);
+                jLabel1.setBackground(bg);
+                jLabel1.setForeground(fg);
+            }
+        };
+        colorSchemeC.putValue(Action.NAME, "Standard");
+
+        popup.add(colorSchemeA);
+        popup.add(colorSchemeB);
+        popup.add(colorSchemeC);
+        popup.addPopupMenuListener(new PopupMenuListener() {
+            @Override public void popupMenuWillBecomeVisible(PopupMenuEvent e) {}
+            @Override public void popupMenuCanceled(PopupMenuEvent e) {}
+            @Override
+            public void popupMenuWillBecomeInvisible(PopupMenuEvent e) {
+                SwingUtilities.invokeLater(inputFieldFocusRunner);
+            }
+        });
+    }
+
     private String processCommandListCommand(CommandListCommand listCommand) {
         String command;
         if(listCommand == CommandListCommand.NEXT) {
@@ -315,16 +373,12 @@ public class RunRunConsole extends javax.swing.JFrame {
         }
         //Execute command
         try {
-            if(!skipFirstCommand) {
-                output("r! " + command + "\n");
-                if(!processInternal(command)) {
-                    Object result = session.execute(command);
-                    if(result != null) {
-                        output(result);
-                    }
+            output("r! " + command + "\n");
+            if(!processInternal(command)) {
+                Object result = session.execute(command);
+                if(result != null) {
+                    output(result);
                 }
-            } else {
-                skipFirstCommand = false;
             }
         } catch (Exception ex) {
             output(ex);

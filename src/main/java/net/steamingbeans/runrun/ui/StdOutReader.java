@@ -5,14 +5,15 @@
 
 package net.steamingbeans.runrun.ui;
 
+import java.awt.EventQueue;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import javax.naming.event.EventDirContext;
 import javax.swing.SwingWorker;
+import sun.swing.SwingUtilities2;
 
 /**
  * Extend this class and implement the output methods to get an opportunity to
