@@ -27,14 +27,14 @@ public class CommandExecutor {
     //create the session on that thread. ("Safe" = I have no idea what the thread
     //rules of a CommandSession is.)
     private CommandSession session;
-    private ExecutorService sessionThread = Executors.newSingleThreadExecutor();
-    private PrintStream out;
-    private PrintStream err;
-    private ObservableStringOutputStream outputStream = new ObservableStringOutputStream("UTF-8");
-    private ObservableStringOutputStream errorStream = new ObservableStringOutputStream("UTF-8");
-    private ByteArrayInputStream in = new ByteArrayInputStream(new byte[0]);
+    private final ExecutorService sessionThread = Executors.newSingleThreadExecutor();
+    private final PrintStream out;
+    private final PrintStream err;
+    private final ObservableStringOutputStream outputStream = new ObservableStringOutputStream("UTF-8");
+    private final ObservableStringOutputStream errorStream = new ObservableStringOutputStream("UTF-8");
+    private final ByteArrayInputStream in = new ByteArrayInputStream(new byte[0]);
     private volatile boolean started;
-    private CommandProcessor processor;
+    private final CommandProcessor processor;
 
     public CommandExecutor(final CommandProcessor processor) {
         PrintStream outs;
@@ -63,11 +63,11 @@ public class CommandExecutor {
      */
     public synchronized void start() {
         if(!started) {
-            session = processor.createSession(in, out, err);
             sessionThread.submit(new Runnable() {
                 @Override
                 public void run() {
                     try {
+                        session = processor.createSession(in, out, err);
                         out.println("_____________________________");
                         out.println("   WELCOME TO RUNRUN COVER   ");
                         out.flush();
@@ -89,41 +89,56 @@ public class CommandExecutor {
         sessionThread.submit(new Runnable() {
             @Override
             public void run() {
-                System.out.println("BYE!");
+                out.flush();
+                err.flush();
+                out.close();
+                err.close();
                 session.close();
             }
         });
         sessionThread.shutdown();
-        out.close();
-        err.close();
     }
 
     public final void execute(final String command) {
         if(command.isEmpty()) return;
-        try {
-            out.println("\nr! " + command);
-            Object o = session.execute(command);
-            if(o != null) {
-                out.println(session.format(o, Converter.INSPECT));
+        sessionThread.submit(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    out.println("\nr! " + command);
+                    Object o = session.execute(command);
+                    if(o != null) {
+                        out.println(session.format(o, Converter.INSPECT));
+                    }
+                } catch (Exception ex) {
+                    outputThrowable(ex, command);
+                } finally {
+                    out.flush();
+                    err.flush();
+                }
             }
-            out.flush();
-        } catch (Exception ex) {
-            String name = ex.getClass().getName();
-            String message = ex.getMessage();
-            if(message.contains("Command not found")) {
+        });
+    }
+
+    private void outputThrowable(Throwable t, String causeByCommand) {
+        try {
+            String name = t.getClass().getName();
+            String message = t.getMessage();
+            if(message != null && message.contains("Command not found")) {
                 out.println("\t" + message);
             } else {
-                out.println("\tError, see error log (ctrl-o) for details.");
+                out.println("\tError, see error log (ctrl-e) for details.");
             }
 
-            err.println(new Date().toString() + " - " + command + " caused:");
+            err.println(new Date().toString() + " - " + causeByCommand + " caused:");
             err.println(name + " " + message + ": ");
-            for(StackTraceElement elem : ex.getStackTrace()) {
+            for(StackTraceElement elem : t.getStackTrace()) {
                 err.println(elem.toString());
             }
-        } finally {
-            out.flush();
-            err.flush();
+        } catch (Exception ex) {
+            err.print("RunRun Internal error");
+            Logger.getLogger(this.getClass().getName()).log(Level.WARNING, "RunRun Internal error: Could not print following exception: ", t);
+            Logger.getLogger(this.getClass().getName()).log(Level.WARNING, "RunRun Internal error: Cause for not printing exception: ", ex);
         }
     }
 }

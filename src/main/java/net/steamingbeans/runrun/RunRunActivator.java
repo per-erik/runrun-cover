@@ -8,6 +8,7 @@ import net.steamingbeans.runrun.ui.RunRunConsole;
 import org.apache.felix.service.command.CommandProcessor;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.BundleException;
 import org.osgi.framework.ServiceReference;
 import org.osgi.util.tracker.ServiceTracker;
 
@@ -60,12 +61,26 @@ public class RunRunActivator implements BundleActivator {
             @Override
             public void run() {
                 commandExecutor = new CommandExecutor(processor);
-                console = new RunRunConsole(commandExecutor);
+                console = new RunRunConsole(commandExecutor, stopCommand);
                 console.pack();
                 console.setVisible(true);
             }
         });
     }
+
+    private Runnable stopCommand = new Runnable() {
+        @Override
+        public void run() {
+            if(commandExecutor != null) {
+                try {
+                    context.getBundle(bundleID).stop();
+                    commandExecutor.close();
+                } catch (BundleException ex) {
+                    //Not much to do if bundle won't stop.
+                }
+            }
+        }
+    };
 
     private void closeConsoleOnEDTAndBlock() {
         Runnable disposer = new Runnable() {
@@ -86,10 +101,6 @@ public class RunRunActivator implements BundleActivator {
             } catch (InvocationTargetException ex) {
                 Logger.getLogger(RunRunActivator.class.getName()).log(Level.SEVERE, null, ex);
             }
-        }
-
-        if(commandExecutor != null) {
-            commandExecutor.close();
         }
     }
 }

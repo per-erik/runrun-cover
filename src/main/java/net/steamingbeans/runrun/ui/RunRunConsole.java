@@ -46,6 +46,7 @@ public class RunRunConsole extends javax.swing.JFrame {
     private CommandExecutor executor;
     private JPopupMenu popup;
     private boolean errorShowing = false;
+    private Runnable stopCommand;
     private Runnable inputFieldFocusRunner = new Runnable() {
         @Override
         public void run() {
@@ -79,10 +80,17 @@ public class RunRunConsole extends javax.swing.JFrame {
         }
     };
 
-    public RunRunConsole(CommandExecutor executor) {
+    /**
+     * Creates a new run run console.
+     * @param executor The command executor to use.
+     * @param stopCommand A runnable that will be invoked when this console is
+     * disposed.
+     */
+    public RunRunConsole(CommandExecutor executor, Runnable stopCommand) {
         super("RunRun Cover");
         initComponents();
         this.executor = executor;
+        this.stopCommand = stopCommand;
         executor.setErrorObserver(errorObserver);
         executor.setObserver(outputObserver);
         executor.start();
@@ -108,6 +116,7 @@ public class RunRunConsole extends javax.swing.JFrame {
 
     @Override
     public void dispose() {
+        stopCommand.run();
         super.dispose();
     }
 
@@ -131,9 +140,9 @@ public class RunRunConsole extends javax.swing.JFrame {
         inputField = new javax.swing.JTextField();
         jLabel1 = new javax.swing.JLabel();
 
-        setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE);
+        setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setBackground(new java.awt.Color(0, 0, 0));
-        setFont(new java.awt.Font("Lucida Console", 0, 13)); // NOI18N
+        setFont(new java.awt.Font("Lucida Console", 0, 13));
 
         mainPanel.setBackground(new java.awt.Color(0, 0, 0));
         mainPanel.setLayout(new java.awt.BorderLayout());
@@ -145,7 +154,7 @@ public class RunRunConsole extends javax.swing.JFrame {
         outputArea.setBackground(new java.awt.Color(0, 0, 0));
         outputArea.setColumns(40);
         outputArea.setEditable(false);
-        outputArea.setFont(new java.awt.Font("Lucida Console", 0, 13)); // NOI18N
+        outputArea.setFont(new java.awt.Font("Lucida Console", 0, 13));
         outputArea.setForeground(new java.awt.Color(215, 215, 215));
         outputArea.setRows(5);
         outputArea.setTabSize(4);
@@ -170,7 +179,7 @@ public class RunRunConsole extends javax.swing.JFrame {
 
         errorArea.setBackground(new java.awt.Color(0, 0, 0));
         errorArea.setColumns(20);
-        errorArea.setFont(new java.awt.Font("Lucida Console", 0, 13)); // NOI18N
+        errorArea.setFont(new java.awt.Font("Lucida Console", 0, 13));
         errorArea.setForeground(java.awt.Color.red);
         errorArea.setRows(5);
         errorArea.setBorder(null);
@@ -188,11 +197,11 @@ public class RunRunConsole extends javax.swing.JFrame {
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 517, Short.MAX_VALUE)
+            .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 400, Short.MAX_VALUE)
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 328, Short.MAX_VALUE)
+            .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 286, Short.MAX_VALUE)
         );
 
         outputPanel.add(jPanel1, "card3");
@@ -226,7 +235,7 @@ public class RunRunConsole extends javax.swing.JFrame {
             .addGroup(inputPanelLayout.createSequentialGroup()
                 .addComponent(jLabel1)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(inputField, javax.swing.GroupLayout.DEFAULT_SIZE, 497, Short.MAX_VALUE))
+                .addComponent(inputField, javax.swing.GroupLayout.DEFAULT_SIZE, 380, Short.MAX_VALUE))
         );
         inputPanelLayout.setVerticalGroup(
             inputPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
