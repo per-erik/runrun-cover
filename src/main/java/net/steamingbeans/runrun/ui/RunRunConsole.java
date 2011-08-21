@@ -11,22 +11,28 @@
 
 package net.steamingbeans.runrun.ui;
 
+import java.awt.CardLayout;
 import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.GraphicsEnvironment;
+import java.awt.Insets;
 import java.awt.Point;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
-import java.io.InputStream;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
+import javax.swing.JComponent;
 import javax.swing.JPopupMenu;
+import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
-import org.apache.felix.service.command.CommandSession;
-import org.apache.felix.service.command.Converter;
+import net.steamingbeans.runrun.CommandExecutor;
+import net.steamingbeans.runrun.OutputStreamObserver;
 
 /**
  *
@@ -34,14 +40,12 @@ import org.apache.felix.service.command.Converter;
  */
 public class RunRunConsole extends javax.swing.JFrame {
 
-    private final CommandSession session;
     private List<String> commandList = new LinkedList<String>();
     private ListIterator<String> commandIterator = commandList.listIterator();
-    private final String stopCommand;
-    private final Output output;
-    private boolean skipFirstCommand = true;
     private CommandListCommand lastCommandListCommandWas;
+    private CommandExecutor executor;
     private JPopupMenu popup;
+    private boolean errorShowing = false;
     private Runnable inputFieldFocusRunner = new Runnable() {
         @Override
         public void run() {
@@ -52,49 +56,58 @@ public class RunRunConsole extends javax.swing.JFrame {
         NEXT,
         PREVIOUS,
     }
-    private class Output extends StdOutReader {
-        public Output(InputStream is) {
-            super(is);
-        }
-
+    private OutputStreamObserver<String> outputObserver = new OutputStreamObserver<String>() {
         @Override
-        public void output(String string) {
-            StringBuilder builder = new StringBuilder();
-            builder.append(outputArea.getText());
-            builder.append(string);
-            builder.append("\n");
-            outputArea.setText(builder.toString());
+        public void flushing(final String string) {
+            SwingUtilities.invokeLater(new Runnable() {
+                @Override
+                public void run() {
+                    output(string);
+                }
+            });
         }
-
+    };
+    private OutputStreamObserver<String> errorObserver = new OutputStreamObserver<String>() {
         @Override
-        public void output(Throwable t) {
-            RunRunConsole.this.output(t);
+        public void flushing(final String string) {
+            SwingUtilities.invokeLater(new Runnable() {
+                @Override
+                public void run() {
+                    error(string);
+                }
+            });
         }
-        
     };
 
-    public RunRunConsole(InputStream toEcho, CommandSession session, String stopCommand) {
+    public RunRunConsole(CommandExecutor executor) {
         super("RunRun Cover");
-        commandList.add(""); //Add an initial "empty" command to be able to cycle through to an empty input-line
-        this.session = session;
-        this.stopCommand = stopCommand;
         initComponents();
+        this.executor = executor;
+        executor.setErrorObserver(errorObserver);
+        executor.setObserver(outputObserver);
+        executor.start();
         inputField.requestFocusInWindow();
-        outputArea.setText("___~~~ Welcome to RunRun Cover ~~~___\nType '" + stopCommand + "' to stop RunRun Cover.\n");
-        output = new Output(toEcho);
-        output.execute();
         //Substance issues handled, only relevant if platform is running Substance 4.2 or later
         outputArea.putClientProperty("substancelaf.colorizationFactor", new Double(1));
         inputField.putClientProperty("substancelaf.colorizationFactor", new Double(1));
         inputPanel.putClientProperty("substancelaf.colorizationFactor", new Double(1));
+        errorArea.putClientProperty("substancelaf.colorizationFactor", new Double(1));
         jLabel1.putClientProperty("substancelaf.colorizationFactor", new Double(1));
 
+        commandList.add(""); //Add an initial "empty" command to be able to cycle through to an empty input-line
         createPopup();
+        setInputMap(outputArea);
+        setInputMap(errorArea);
+        setInputMap(inputField);
+        setInputMap(getRootPane());
+        Dimension screen = new Dimension();
+        screen.width = 600;
+        screen.height = 800;
+        mainPanel.setPreferredSize(screen);
     }
 
     @Override
     public void dispose() {
-        output.dispose();
         super.dispose();
     }
 
@@ -111,16 +124,21 @@ public class RunRunConsole extends javax.swing.JFrame {
         outputPanel = new javax.swing.JPanel();
         jScrollPane1 = new javax.swing.JScrollPane();
         outputArea = new javax.swing.JTextArea();
+        jPanel1 = new javax.swing.JPanel();
+        jScrollPane2 = new javax.swing.JScrollPane();
+        errorArea = new javax.swing.JTextArea();
         inputPanel = new javax.swing.JPanel();
         inputField = new javax.swing.JTextField();
         jLabel1 = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE);
         setBackground(new java.awt.Color(0, 0, 0));
-        setFont(new java.awt.Font("Lucida Console", 0, 13));
+        setFont(new java.awt.Font("Lucida Console", 0, 13)); // NOI18N
 
         mainPanel.setBackground(new java.awt.Color(0, 0, 0));
         mainPanel.setLayout(new java.awt.BorderLayout());
+
+        outputPanel.setLayout(new java.awt.CardLayout());
 
         jScrollPane1.setBorder(null);
 
@@ -146,23 +164,45 @@ public class RunRunConsole extends javax.swing.JFrame {
         });
         jScrollPane1.setViewportView(outputArea);
 
-        javax.swing.GroupLayout outputPanelLayout = new javax.swing.GroupLayout(outputPanel);
-        outputPanel.setLayout(outputPanelLayout);
-        outputPanelLayout.setHorizontalGroup(
-            outputPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 599, Short.MAX_VALUE)
+        outputPanel.add(jScrollPane1, "card2");
+
+        jScrollPane2.setBorder(null);
+
+        errorArea.setBackground(new java.awt.Color(0, 0, 0));
+        errorArea.setColumns(20);
+        errorArea.setFont(new java.awt.Font("Lucida Console", 0, 13)); // NOI18N
+        errorArea.setForeground(java.awt.Color.red);
+        errorArea.setRows(5);
+        errorArea.setBorder(null);
+        errorArea.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mousePressed(java.awt.event.MouseEvent evt) {
+                outputAreaMousePressed(evt);
+            }
+            public void mouseReleased(java.awt.event.MouseEvent evt) {
+                outputAreaMouseReleased(evt);
+            }
+        });
+        jScrollPane2.setViewportView(errorArea);
+
+        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
+        jPanel1.setLayout(jPanel1Layout);
+        jPanel1Layout.setHorizontalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 517, Short.MAX_VALUE)
         );
-        outputPanelLayout.setVerticalGroup(
-            outputPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 328, Short.MAX_VALUE)
+        jPanel1Layout.setVerticalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 328, Short.MAX_VALUE)
         );
+
+        outputPanel.add(jPanel1, "card3");
 
         mainPanel.add(outputPanel, java.awt.BorderLayout.CENTER);
 
         inputPanel.setBackground(new java.awt.Color(0, 0, 0));
 
         inputField.setBackground(new java.awt.Color(0, 0, 0));
-        inputField.setFont(new java.awt.Font("Lucida Console", 0, 13)); // NOI18N
+        inputField.setFont(new java.awt.Font("Lucida Console", 0, 13));
         inputField.setForeground(new java.awt.Color(215, 215, 215));
         inputField.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
         inputField.setCaretColor(new java.awt.Color(255, 255, 255));
@@ -186,7 +226,7 @@ public class RunRunConsole extends javax.swing.JFrame {
             .addGroup(inputPanelLayout.createSequentialGroup()
                 .addComponent(jLabel1)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(inputField, javax.swing.GroupLayout.DEFAULT_SIZE, 579, Short.MAX_VALUE))
+                .addComponent(inputField, javax.swing.GroupLayout.DEFAULT_SIZE, 497, Short.MAX_VALUE))
         );
         inputPanelLayout.setVerticalGroup(
             inputPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -197,16 +237,7 @@ public class RunRunConsole extends javax.swing.JFrame {
 
         mainPanel.add(inputPanel, java.awt.BorderLayout.PAGE_END);
 
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
-        getContentPane().setLayout(layout);
-        layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(mainPanel, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 599, Short.MAX_VALUE)
-        );
-        layout.setVerticalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(mainPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 342, Short.MAX_VALUE)
-        );
+        getContentPane().add(mainPanel, java.awt.BorderLayout.CENTER);
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
@@ -245,7 +276,30 @@ public class RunRunConsole extends javax.swing.JFrame {
     }//GEN-LAST:event_outputAreaMousePressed
 
     private void showPopup(Point p) {
-        popup.show(outputArea, p.x, p.y);
+        if(errorShowing) {
+            popup.show(errorArea, p.x, p.y);
+        } else {
+            popup.show(outputArea, p.x, p.y);
+        }
+    }
+
+    private void setInputMap(JComponent c) {
+        c.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_E, KeyEvent.CTRL_DOWN_MASK), "last.card");
+        c.getActionMap().put("last.card", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                errorShowing = true;
+                ((CardLayout)outputPanel.getLayout()).last(outputPanel);
+            }
+        });
+        c.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_O, KeyEvent.CTRL_DOWN_MASK), "first.card");
+        c.getActionMap().put("first.card", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                errorShowing = false;
+                ((CardLayout)outputPanel.getLayout()).first(outputPanel);
+            }
+        });
     }
 
     private void createPopup() {
@@ -262,6 +316,8 @@ public class RunRunConsole extends javax.swing.JFrame {
                 inputPanel.setBackground(bg);
                 jLabel1.setBackground(bg);
                 jLabel1.setForeground(fg);
+                errorArea.setBackground(bg);
+                errorArea.setForeground(Color.BLACK);
             }
         };
         colorSchemeA.putValue(Action.NAME, "Blue-White");
@@ -277,6 +333,8 @@ public class RunRunConsole extends javax.swing.JFrame {
                 inputPanel.setBackground(bg);
                 jLabel1.setBackground(bg);
                 jLabel1.setForeground(fg);
+                errorArea.setBackground(bg);
+                errorArea.setForeground(Color.RED);
             }
         };
         colorSchemeB.putValue(Action.NAME, "Black-Green");
@@ -292,10 +350,25 @@ public class RunRunConsole extends javax.swing.JFrame {
                 inputPanel.setBackground(bg);
                 jLabel1.setBackground(bg);
                 jLabel1.setForeground(fg);
+                errorArea.setBackground(bg);
+                errorArea.setForeground(Color.RED);
             }
         };
         colorSchemeC.putValue(Action.NAME, "Standard");
+        AbstractAction clear = new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if(errorShowing) {
+                    errorArea.setText("");
+                } else {
+                    outputArea.setText("");
+                }
+            }
+        };
+        clear.putValue(Action.NAME, "Clear this screan");
 
+        popup.add(clear);
+        popup.addSeparator();
         popup.add(colorSchemeA);
         popup.add(colorSchemeB);
         popup.add(colorSchemeC);
@@ -371,69 +444,33 @@ public class RunRunConsole extends javax.swing.JFrame {
                 commandIterator = commandList.listIterator(); //Reset iterator upon adding new commands to command list
             }
         }
-        //Execute command
-        try {
-            output("r! " + command + "\n");
-            if(!processInternal(command)) {
-                Object result = session.execute(command);
-                if(result != null) {
-                    output(result);
-                }
-            }
-        } catch (Exception ex) {
-            output(ex);
-        }
-    }
-
-    private boolean processInternal(String command) throws Exception {
-        if(command.equals("cls") || command.equals("clear")) {
-            outputArea.setText("");
-            return true;
-        } else if(command.startsWith("exit") || command.startsWith("system:exit")) {
-            outputArea.setText("");
-            session.execute(stopCommand);
-        }
-        return false;
-    }
-
-    private void output(Object o) {
-        CharSequence seq = session.format(o, Converter.INSPECT);
-        output(seq.toString());
+        executor.execute(command);
     }
 
     private void output(String s) {
-        StringBuilder builder = new StringBuilder();
-        builder.append(outputArea.getText());
-        builder.append(s);
-        outputArea.setText(builder.toString());
+        if(s.equals("runrun:cls")) {
+            outputArea.setText("");
+        } else {
+            StringBuilder builder = new StringBuilder(outputArea.getText());
+            builder.append(s);
+            outputArea.setText(builder.toString());
+        }
     }
 
-    private void output(Throwable thrown) {
-        StringBuilder builder = new StringBuilder();
-        builder.append(outputArea.getText());
-        //The CommandNotFoundException is not exported through the api of gogo.
-        //This is an ugly hack until (if ever) the class is exported.
-        if(thrown instanceof IllegalArgumentException && thrown.getClass().getName().contains("CommandNotFoundException")) {
-            builder.append(thrown.getMessage());
-            builder.append("\n");
-        } else {
-            builder.append(thrown.getClass().getName());
-            builder.append(thrown.getMessage());
-            builder.append("\n");
-            for(StackTraceElement elem : thrown.getStackTrace()) {
-                builder.append("\t");
-                builder.append(elem.toString());
-                builder.append("\n");
-            }
-        }
-        outputArea.setText(builder.toString());
+    private void error(String s) {
+        StringBuilder builder = new StringBuilder(errorArea.getText());
+        builder.append(s);
+        errorArea.setText(builder.toString());
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JTextArea errorArea;
     private javax.swing.JTextField inputField;
     private javax.swing.JPanel inputPanel;
     private javax.swing.JLabel jLabel1;
+    private javax.swing.JPanel jPanel1;
     private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JPanel mainPanel;
     private javax.swing.JTextArea outputArea;
     private javax.swing.JPanel outputPanel;

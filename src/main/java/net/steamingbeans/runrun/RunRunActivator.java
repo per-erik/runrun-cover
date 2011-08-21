@@ -1,16 +1,11 @@
 package net.steamingbeans.runrun;
 
-import java.io.IOException;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
-import java.io.PrintStream;
 import java.lang.reflect.InvocationTargetException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.SwingUtilities;
 import net.steamingbeans.runrun.ui.RunRunConsole;
 import org.apache.felix.service.command.CommandProcessor;
-import org.apache.felix.service.command.CommandSession;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
@@ -24,9 +19,8 @@ public class RunRunActivator implements BundleActivator {
 
     private BundleContext context;
     private ServiceTracker commandProcessorTracker;
+    private CommandExecutor commandExecutor;
     private RunRunConsole console;
-    private volatile CommandSession session;
-    private final PipedInputStream outReader = new PipedInputStream();
     private long bundleID;
 
     @Override
@@ -60,20 +54,15 @@ public class RunRunActivator implements BundleActivator {
         tracker.open();
         return tracker;
     }
-
+    
     private synchronized void startShell(final CommandProcessor processor) {
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
-                try {
-                    PrintStream out = new PrintStream(new PipedOutputStream(outReader));
-                    session = processor.createSession(System.in, out, out);
-                    console = new RunRunConsole(outReader, session, "stop " + bundleID);
-                    console.pack();
-                    console.setVisible(true);
-                } catch (IOException ex) {
-                    Logger.getLogger(RunRunActivator.class.getName()).log(Level.SEVERE, "failure to connect piped streams", ex);
-                }
+                commandExecutor = new CommandExecutor(processor);
+                console = new RunRunConsole(commandExecutor);
+                console.pack();
+                console.setVisible(true);
             }
         });
     }
@@ -99,15 +88,8 @@ public class RunRunActivator implements BundleActivator {
             }
         }
 
-        try {
-            if(session != null) {
-                session.close();
-            }
-        } catch (IllegalStateException ex) {/*Thrown if session already closed*/}
-        try {
-            outReader.close();
-        } catch (IOException ex) {
-            Logger.getLogger(RunRunActivator.class.getName()).log(Level.SEVERE, null, ex);
+        if(commandExecutor != null) {
+            commandExecutor.close();
         }
     }
 }
