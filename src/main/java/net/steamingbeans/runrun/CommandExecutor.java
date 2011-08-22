@@ -105,7 +105,7 @@ public class CommandExecutor {
             @Override
             public void run() {
                 try {
-                    out.println("\nr! " + command);
+                    out.println("\nr> " + command);
                     Object o = session.execute(command);
                     if(o != null) {
                         out.println(session.format(o, Converter.INSPECT));

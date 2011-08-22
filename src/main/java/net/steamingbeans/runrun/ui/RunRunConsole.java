@@ -14,10 +14,7 @@ package net.steamingbeans.runrun.ui;
 import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.GraphicsEnvironment;
-import java.awt.Insets;
 import java.awt.Point;
-import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.util.LinkedList;
@@ -211,7 +208,7 @@ public class RunRunConsole extends javax.swing.JFrame {
         inputPanel.setBackground(new java.awt.Color(0, 0, 0));
 
         inputField.setBackground(new java.awt.Color(0, 0, 0));
-        inputField.setFont(new java.awt.Font("Lucida Console", 0, 13));
+        inputField.setFont(new java.awt.Font("Lucida Console", 0, 13)); // NOI18N
         inputField.setForeground(new java.awt.Color(215, 215, 215));
         inputField.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
         inputField.setCaretColor(new java.awt.Color(255, 255, 255));
@@ -224,9 +221,9 @@ public class RunRunConsole extends javax.swing.JFrame {
         });
 
         jLabel1.setBackground(new java.awt.Color(0, 0, 0));
-        jLabel1.setFont(new java.awt.Font("Lucida Console", 0, 13));
+        jLabel1.setFont(new java.awt.Font("Lucida Console", 0, 13)); // NOI18N
         jLabel1.setForeground(new java.awt.Color(215, 215, 215));
-        jLabel1.setText("r!");
+        jLabel1.setText("r>");
 
         javax.swing.GroupLayout inputPanelLayout = new javax.swing.GroupLayout(inputPanel);
         inputPanel.setLayout(inputPanelLayout);
