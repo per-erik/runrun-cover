@@ -113,8 +113,15 @@ public class RunRunConsole extends javax.swing.JFrame {
 
     @Override
     public void dispose() {
-        stopCommand.run();
         super.dispose();
+        stopCommand.run();
+    }
+
+    public void dispose(boolean runStopCommand) {
+        super.dispose();
+        if(runStopCommand) {
+            stopCommand.run();
+        }
     }
 
     /** This method is called from within the constructor to

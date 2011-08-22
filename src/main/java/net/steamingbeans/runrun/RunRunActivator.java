@@ -6,6 +6,7 @@ import java.util.logging.Logger;
 import javax.swing.SwingUtilities;
 import net.steamingbeans.runrun.ui.RunRunConsole;
 import org.apache.felix.service.command.CommandProcessor;
+import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.BundleException;
@@ -73,10 +74,11 @@ public class RunRunActivator implements BundleActivator {
         public void run() {
             if(commandExecutor != null) {
                 try {
-                    context.getBundle(bundleID).stop();
-                    commandExecutor.close();
+                    context.getBundle().stop();
                 } catch (BundleException ex) {
                     //Not much to do if bundle won't stop.
+                } catch(Throwable ex) {
+                    System.out.println("Banana");
                 }
             }
         }
@@ -87,7 +89,8 @@ public class RunRunActivator implements BundleActivator {
             @Override
             public void run() {
                 if (console != null) {
-                    console.dispose();
+                    console.dispose(false);
+                    commandExecutor.close();
                 }
             }
         };
