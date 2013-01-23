@@ -13,6 +13,7 @@ package net.steamingbeans.runrun.ui;
 
 import java.awt.CardLayout;
 import java.awt.Color;
+import java.awt.Dialog;
 import java.awt.Dimension;
 import java.awt.Point;
 import java.awt.event.ActionEvent;
@@ -85,6 +86,7 @@ public class RunRunConsole extends javax.swing.JFrame {
      */
     public RunRunConsole(CommandExecutor executor, Runnable stopCommand) {
         super("RunRun Cover");
+        setModalExclusionType(Dialog.ModalExclusionType.APPLICATION_EXCLUDE);
         initComponents();
         this.executor = executor;
         this.stopCommand = stopCommand;
