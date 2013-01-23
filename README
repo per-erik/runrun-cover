@@ -1,0 +1,3 @@
+A console like Swing UI for the Apache GoGo Shell (an OSGi CLI). This can be
+usefull when your application is not started from the command line and you
+therefore have no command line to write commands in.
